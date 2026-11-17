@@ -1,0 +1,108 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.display_name }}
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - display_name: x86
+            cmake_arch: Win32
+            artifact_name: CopilotUsage-x86
+          - display_name: x64
+            cmake_arch: x64
+            artifact_name: CopilotUsage-x64
+          - display_name: arm64
+            cmake_arch: ARM64
+            artifact_name: CopilotUsage-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $version = "1.0.0"
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -like "v*") {
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Resolved CopilotUsage version: $version"
+
+      - name: Configure CMake
+        run: >
+          cmake
+          -S .
+          -B build/${{ matrix.display_name }}
+          -A ${{ matrix.cmake_arch }}
+          -DCMAKE_BUILD_TYPE=Release
+          "-DCOPILOT_USAGE_VERSION=${{ steps.version.outputs.version }}"
+
+      - name: Build
+        run: cmake --build build/${{ matrix.display_name }} --config Release --target CopilotUsage CopilotUsageTests
+
+      - name: Run Tests
+        if: matrix.display_name != 'arm64'
+        run: ctest --test-dir build/${{ matrix.display_name }} -C Release --output-on-failure
+
+      - name: Package Release
+        shell: pwsh
+        run: |
+          $packageDir = Join-Path $env:GITHUB_WORKSPACE "package\${{ matrix.artifact_name }}"
+          New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+          Copy-Item "build\${{ matrix.display_name }}\Release\CopilotUsage.dll" $packageDir
+          Copy-Item "README.md" $packageDir
+          Copy-Item "LICENSE" $packageDir
+          Compress-Archive -Path "$packageDir\*" -DestinationPath "${{ matrix.artifact_name }}.zip" -Force
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: windows-latest
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: List Artifacts
+        shell: pwsh
+        run: Get-ChildItem -Path release-assets -Recurse
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CopilotUsage ${{ github.ref_name }}
+          files: release-assets/**/*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false

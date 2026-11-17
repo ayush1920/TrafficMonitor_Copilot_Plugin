@@ -1,0 +1,9 @@
+#pragma once
+
+#define IDD_OPTIONS 101
+#define IDC_AUTH_PATH 1001
+#define IDC_BROWSE_AUTH 1002
+#define IDC_TOKEN 1003
+#define IDC_PROXY_MODE 1004
+#define IDC_PROXY_SERVER 1005
+#define IDC_REFRESH_INTERVAL 1006

@@ -1,0 +1,13 @@
+build/
+.vs/
+out/
+bin/
+obj/
+*.user
+*.suo
+*.dmp
+*.pdb
+*.ilk
+*.tmp
+*.zip
+TrafficMonitor/
