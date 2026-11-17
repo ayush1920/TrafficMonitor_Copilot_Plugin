@@ -29,7 +29,7 @@ std::string WideToUtf8(const std::wstring& input);
 
 CopilotUsageSnapshot ParseCopilotUsageJson(const std::string& jsonText, std::wstring* errorMessage = nullptr);
 
-std::wstring FormatBucketValue(const QuotaBucket& bucket);
+std::wstring FormatBucketValue(const QuotaBucket& bucket, bool hidePercent = false);
 float GetBucketUsageRatio(const QuotaBucket& bucket);
 
 std::wstring BuildCopilotTooltip(const CopilotUsageSnapshot& snapshot);

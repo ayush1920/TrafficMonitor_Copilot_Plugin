@@ -27,7 +27,7 @@ public:
     int IsDrawResourceUsageGraph() const override { return 1; }
     float GetResourceUsageGraphValue() const override { return usageRatio_; }
 
-    void SetSnapshot(const CopilotUsageSnapshot& snapshot) {
+    void SetSnapshot(const CopilotUsageSnapshot& snapshot, bool hidePercent = false) {
         if (!snapshot.success) {
             valueText_ = L"--";
             usageRatio_ = 0.0f;
@@ -37,7 +37,7 @@ public:
         const QuotaBucket& bucket = (kind_ == Kind::Premium) ? snapshot.premium :
                                     (kind_ == Kind::Chat) ? snapshot.chat : snapshot.completions;
 
-        valueText_ = FormatBucketValue(bucket);
+        valueText_ = FormatBucketValue(bucket, hidePercent);
         usageRatio_ = GetBucketUsageRatio(bucket);
     }
 
@@ -99,9 +99,9 @@ public:
             if (generation != configGeneration_) return;
 
             snapshot_ = std::move(snapshot);
-            premiumItem_.SetSnapshot(snapshot_);
-            chatItem_.SetSnapshot(snapshot_);
-            completionsItem_.SetSnapshot(snapshot_);
+            premiumItem_.SetSnapshot(snapshot_, hidePercent_);
+            chatItem_.SetSnapshot(snapshot_, hidePercent_);
+            completionsItem_.SetSnapshot(snapshot_, hidePercent_);
             tooltip_ = BuildCopilotTooltip(snapshot_);
         }).detach();
     }
@@ -124,9 +124,9 @@ public:
             lastFetch_ = {};
             forceRefresh_ = true;
             snapshot_ = {};
-            premiumItem_.SetSnapshot(snapshot_);
-            chatItem_.SetSnapshot(snapshot_);
-            completionsItem_.SetSnapshot(snapshot_);
+            premiumItem_.SetSnapshot(snapshot_, hidePercent_);
+            chatItem_.SetSnapshot(snapshot_, hidePercent_);
+            completionsItem_.SetSnapshot(snapshot_, hidePercent_);
             tooltip_ = L"GitHub Copilot Usage: waiting for data...";
         }
 
@@ -157,6 +157,13 @@ public:
             std::lock_guard<std::mutex> lock(mutex_);
             config_ = LoadCopilotConfig();
             forceRefresh_ = true;
+        } else if (index == EI_TASKBAR_WND_NOT_SHOW_PERCENT && data) {
+            bool hide = (*data == L'1' || _wcsicmp(data, L"true") == 0);
+            std::lock_guard<std::mutex> lock(mutex_);
+            hidePercent_ = hide;
+            premiumItem_.SetSnapshot(snapshot_, hidePercent_);
+            chatItem_.SetSnapshot(snapshot_, hidePercent_);
+            completionsItem_.SetSnapshot(snapshot_, hidePercent_);
         }
     }
 
@@ -172,6 +179,7 @@ private:
     CopilotUsageConfig config_;
     unsigned long long configGeneration_ = 0;
     CopilotUsageFetcher fetcher_;
+    bool hidePercent_ = false;
 
     CopilotDisplayItem premiumItem_{
         CopilotDisplayItem::Kind::Premium,

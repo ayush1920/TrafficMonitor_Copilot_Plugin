@@ -138,17 +138,20 @@ CopilotUsageSnapshot ParseCopilotUsageJson(const std::string& jsonText, std::wst
     return snapshot;
 }
 
-std::wstring FormatBucketValue(const QuotaBucket& bucket) {
+std::wstring FormatBucketValue(const QuotaBucket& bucket, bool hidePercent) {
     if (!bucket.present) return L"--";
     if (bucket.unlimited) return L"Unlim";
 
     std::wostringstream ss;
     if (bucket.percentRemaining >= 99.95) {
-        ss << L"100%";
+        ss << L"100";
     } else if (bucket.percentRemaining <= 0.05) {
-        ss << L"0%";
+        ss << L"0";
     } else {
-        ss << std::fixed << std::setprecision(1) << bucket.percentRemaining << L"%";
+        ss << std::fixed << std::setprecision(1) << bucket.percentRemaining;
+    }
+    if (!hidePercent) {
+        ss << L"%";
     }
     return ss.str();
 }

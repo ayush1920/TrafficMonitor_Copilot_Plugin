@@ -61,6 +61,9 @@ void TestParseCopilotUsageJson_LiveFormat() {
     std::wstring premVal = FormatBucketValue(snap.premium);
     assert(premVal == L"48.7%");
 
+    std::wstring premValNoPct = FormatBucketValue(snap.premium, true);
+    assert(premValNoPct == L"48.7");
+
     std::wstring chatVal = FormatBucketValue(snap.chat);
     assert(chatVal == L"Unlim");
 
